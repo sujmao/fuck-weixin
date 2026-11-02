@@ -7,15 +7,16 @@
 <meta name="description" content="100% 复现 Pixiv Viewer 在微信内置浏览器中显示的 FUCK WECHAT 遮罩。附 UA 模拟器，桌面预览各平台效果。">
 <meta name="referrer" content="no-referrer">
 <style>
-  :root { --bg:#0e1116; --card:#171b23; --text:#e8ecf4; --muted:#8b93a3; --accent:#ff3b5c; --line:rgba(255,255,255,.08); }
+  :root { --bg:#ffffff; --card:#f7f8fa; --text:#1a1e26; --muted:#5b6472; --accent:#ee0a24; --line:rgba(0,0,0,.09); }
   * { box-sizing: border-box; }
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
-  .bar { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:14px 20px; background:rgba(14,17,22,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(8px); }
+  .bar { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:14px 20px; background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); backdrop-filter:blur(8px); }
   .bar .brand { font-weight:900; letter-spacing:.03em; margin-right:auto; }
   .bar .brand b { color:var(--accent); }
   .bar button { padding:7px 13px; font-size:13px; font-weight:600; color:var(--text); background:var(--card); border:1px solid var(--line); border-radius:9px; cursor:pointer; transition:all .12s ease; }
   .bar button:hover { border-color:var(--accent); color:var(--accent); }
   .bar .reset { border-color:var(--accent); color:var(--accent); }
+  .bar .tag { font-size:11px; color:var(--muted); padding:2px 7px; border-radius:20px; background:var(--card); border:1px solid var(--line); }
   .wrap { max-width:1000px; margin:0 auto; padding:28px 20px 80px; }
   h2 { margin:0 0 14px; font-size:20px; }
   .muted { color:var(--muted); font-size:14px; }
@@ -30,18 +31,20 @@
   .steps li { margin:6px 0; }
   .code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:13px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:2px 8px; }
   .notice { margin-top:26px; padding:16px 20px; border:1px dashed var(--accent); border-radius:12px; color:var(--muted); font-size:14px; }
-  @media (prefers-color-scheme: light) {
-    :root { --bg:#f5f6f8; --card:#ffffff; --text:#1a1e26; --muted:#5b6472; --line:rgba(0,0,0,.1); }
-    .bar { background:rgba(245,246,248,.92); }
-  }
+  table { border-collapse:collapse; width:100%; margin-top:12px; font-size:13px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; }
 </style>
 </head>
 <body>
 
 <div class="bar">
   <div class="brand">fuck<b>-weixin</b> · 桌面 UA 模拟器</div>
+  <span class="tag">iOS → ios26 玻璃弹窗</span>
+  <span class="tag">Android → md 弹窗</span>
   <button data-ua="none" class="reset">正常浏览器</button>
-  <button data-ua="wechat">微信</button>
+  <button data-ua="wechat">微信·iPhone</button>
+  <button data-ua="wechat-android">微信·安卓</button>
   <button data-ua="qq">QQ</button>
   <button data-ua="quark">夸克</button>
   <button data-ua="uc">UC</button>
@@ -52,7 +55,7 @@
 
 <div class="wrap">
   <h2>一个「个性化网站」示例</h2>
-  <p class="muted">这是待拦截的内容。真实效果：从<b>微信 / QQ / 夸克 / UC / 百度 / 华为 / 小米</b>等内置浏览器打开本页时，body 会被清空并显示 <b>FUCK WECHAT</b> + 弹窗「请使用 Chrome/Edge 浏览器访问本站」，与原站 Pixiv Viewer 完全一致。桌面点顶部按钮即可预览各平台效果。</p>
+  <p class="muted">这是待拦截的内容。真实效果：从<b>微信 / QQ / 夸克 / UC / 百度 / 华为 / 小米</b>等内置浏览器打开本页时，body 会被清空并显示 <b>FUCK WECHAT</b> + 弹窗「请使用 Chrome/Edge 浏览器访问本站」，与原站 Pixiv Viewer 完全一致。桌面点顶部按钮即可预览各平台效果（<b>微信·iPhone</b> 触发 ios26 毛玻璃弹窗，<b>微信·安卓</b> 触发 md 弹窗）。</p>
 
   <div class="grid">
     <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#ff5f6d,#ffc371)">🖼️</div><div class="meta"><div class="t">作品 #55655838</div><div class="s">pixiv.pictures/i/55655838</div></div></div>
@@ -62,12 +65,23 @@
   </div>
 
   <div class="steps">
+    <h2>检测原理</h2>
+    <table>
+      <tr><th>设备 / 主题</th><th>遮罩</th><th>弹窗</th><th>确认按钮</th></tr>
+      <tr><td>iPhone · ios26</td><td>透明</td><td>毛玻璃白底 hsla(…, .88)、28px 圆角、内嵌阴影</td><td>透明背景、红字 #ff3b30、药丸形</td></tr>
+      <tr><td>Android · md</td><td>rgba(0,0,0,.7)</td><td>#ece6f0 底、28px 圆角</td><td>#ece6f0、方角</td></tr>
+      <tr><td>其它 · default</td><td>rgba(0,0,0,.7)</td><td>白底、16px 圆角</td><td>红 #ee0a24、白字</td></tr>
+    </table>
+  </div>
+
+  <div class="steps">
     <h2>接入你自己的网站</h2>
     <p class="muted">单文件、零依赖，100% 复现原站效果：</p>
     <ol>
       <li>自动拦截：<span class="code">&lt;script src="fuck-weixin.js" data-auto&gt;&lt;/script&gt;</span></li>
       <li>手动调用：<span class="code">FuckWeixin.init()</span> 或 <span class="code">FuckWeixin.detect()</span></li>
       <li>自定义文案：<span class="code">FuckWeixin.init({ title:"请在浏览器打开", tip:"微信内受限" })</span></li>
+      <li>指定主题：<span class="code">FuckWeixin.init({ theme:"ios26" })</span>（默认 <span class="code">auto</span>，按设备自动判断）</li>
     </ol>
   </div>
 
@@ -79,10 +93,15 @@
 
 <script src="fuck-weixin.js" data-auto></script>
 <script>
-  // UA 样本（token 命中即触发）
+  // UA 样本：设备决定视觉主题（iPhone→ios26，Android→md），token 决定拦截层级（hard/soft）
   var UAS = {
+    // 微信 iPhone —— hard + ios26 玻璃弹窗（用户实测设备）
     wechat: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.40(0x1800282A) NetType/WIFI Language/zh_CN",
+    // 微信 Android —— hard + md 弹窗
+    "wechat-android": "Mozilla/5.0 (Linux; Android 13; SM-G9910) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Mobile Safari/537.36 MicroMessenger/8.0.40.2420(0x2800283E) NetType/WIFI Language/zh_CN",
+    // QQ iPhone —— hard + ios26
     qq: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 QQ/8.9.68 V1_IPH_SQ_8.9.68 MiniAppEnable Core/UIWebView",
+    // 国产内置浏览器（Android）—— soft + md
     quark: "Mozilla/5.0 (Linux; U; Android 13; zh-CN) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Quark/6.10.0.123 Mobile Safari/537.36",
     uc: "Mozilla/5.0 (Linux; U; Android 13; zh-CN) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 UCBrowser/13.4.0.1306 Mobile Safari/537.36",
     baidu: "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 baiduboxapp/13.0 Mobile Safari/537.36",
@@ -90,7 +109,7 @@
     miui: "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 MiuiBrowser/16.0.1 Mobile Safari/537.36"
   };
 
-  // 事件委派到 document：body 被攔截替換後仍可恢復、重新綁定
+  // 事件委派到 document：body 被拦截替换后仍可恢复、重新绑定
   document.addEventListener("click", function (e) {
     var t = e.target;
     var btn = t.closest ? t.closest("[data-ua]") : null;

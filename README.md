@@ -32,18 +32,31 @@ if (/Quark|QQBrowser|baidu|NewsArticle|UCBrowser|Huawei|HeyTap|Miui|Vivo|Oppo|36
 
 ## 二、本仓库如何做到「完全相同」
 
-本仓库按原站**逐字复现**，包括：
+原站首次访问会**按设备自动套用视觉主题**（`app.31596736.js` 中的主题初始化逻辑），弹窗外观随之改变：
+
+```js
+/iPhone|iPod|Macintosh|MacIntel/i.test(ua) => 视觉主题 "ios26"   // iOS
+/Android/i.test(ua)                        => 视觉主题 "md"      // Android
+```
+
+本仓库按原站**逐字复现**（含这三套视觉主题），body 替换与弹窗文案完全一致：
 
 | 项 | 原站 | 本仓库 |
 |---|---|---|
 | 硬屏蔽 body | `<h1 style="margin:10px;font-size:32px">FUCK WECHAT</h1>` | 完全一致 |
 | 软屏蔽 body | `""`（清空） | 完全一致 |
-| 遮罩 | `rgba(0,0,0,.7)` 全屏 | 完全一致 |
-| 弹窗 | 白底、`width:320px`、`border-radius:16px`、`top:45%` 居中 | 完全一致 |
-| 消息 | `请使用 Chrome/Edge 浏览器访问本站`，14px，`#323233`，居中 | 完全一致 |
-| 确认按钮 | 通栏、红 `#ee0a24`、白字、36px 高、文案「确认」 | 完全一致 |
+| 遮罩（ios26） | `transparent` 透明 | 完全一致 |
+| 遮罩（md / 默认） | `rgba(0,0,0,.7)` 全屏 | 完全一致 |
+| 弹窗（ios26） | 毛玻璃白底 `hsla(0,0%,100%,.88)`、`border-radius:28px`、内嵌阴影、`backdrop-filter:saturate(180%) blur(16px)` | 完全一致 |
+| 弹窗（md） | `#ece6f0` 底、`border-radius:28px` | 完全一致 |
+| 弹窗（默认） | 白底、`border-radius:16px`、`width:320px`、`top:45%` 居中 | 完全一致 |
+| 消息 | `请使用 Chrome/Edge 浏览器访问本站`，14px，居中 | 完全一致 |
+| 确认按钮（ios26） | 透明背景、红字 `#ff3b30`、药丸形 `border-radius:999px`、36px 高 | 完全一致 |
+| 确认按钮（md） | `#ece6f0` 底、方角 `border-radius:0` | 完全一致 |
+| 确认按钮（默认） | 通栏、红 `#ee0a24`、白字、`border-radius:2px`、36px 高 | 完全一致 |
 
-弹窗复刻的是 vant Dialog **`round-button`** 主题（原站 `B.lG.alert` 即 vant 的 `Dialog.alert`）。
+弹窗复刻的是 vant Dialog **`round-button`** 主题（原站 `B.lG.alert` 即 vant 的 `Dialog.alert`），
+视觉主题的覆盖规则与 `--md-sys-*` / `--ios-*` token 均逐条还原。
 
 ## 三、检测原理
 
@@ -122,6 +135,7 @@ FuckWeixin.init();
 | `title` | `"FUCK WECHAT"` | 硬屏蔽时替换到 body 的标题（原站原文） |
 | `tip` | `"请使用 Chrome/Edge 浏览器访问本站"` | 弹窗消息（原站原文） |
 | `confirmText` | `"确认"` | 弹窗按钮文案 |
+| `theme` | `"auto"` | 视觉主题：`auto`（按设备自动）/`ios26`/`md`/`default` |
 | `zIndex` | `2500` | 遮罩/弹窗层级 |
 | `debug` | `false` | `true` 时弹窗底部显示「重置预览」（桌面模拟用） |
 | `onBlock(result, cfg)` | `null` | 命中回调 |
