@@ -1,19 +1,27 @@
 /*!
- * fuck-weixin v3.0.0
+ * fuck-weixin v3.1.0
  * ------------------------------------------------------------------
  * 100% 复现 Pixiv Viewer (pixiv.pictures) 在微信/QQ 内置浏览器中的拦截效果。
  *
- * 逆向自原站 app.31596736.js：
- *   vA(): /MicroMessenger|QQ/i.test(ua)
+ * 逆向自原站 app.31596736.js + app.f95a5081.css + 360.fe0ac484.css：
+ *
+ *   硬屏蔽 vA(): /MicroMessenger|QQ/i.test(ua)
  *     => document.body.innerHTML = '<h1 style="margin:10px;font-size:32px">FUCK WECHAT</h1>'
  *        + Dialog.alert({ message:"请使用 Chrome/Edge 浏览器访问本站", theme:"round-button" })
- *   gA(): /Quark|QQBrowser|baidu|NewsArticle|UCBrowser|Huawei|HeyTap|Miui|Vivo|Oppo|360se|Sogou/i.test(ua)
+ *   软屏蔽 gA(): /Quark|QQBrowser|baidu|NewsArticle|UCBrowser|Huawei|HeyTap|Miui|Vivo|Oppo|360se|Sogou/i
  *     => document.body.innerHTML = ""  + 同一个 alert
  *
- * 原站首次访问会按设备自动套用视觉主题（视觉主题会改变弹窗外观）：
- *   /iPhone|iPod|Macintosh|MacIntel/i => "ios26"（遮罩透明、毛玻璃白底 28px 圆角、按钮透明红字）
- *   /Android/i                        => "md"（#ece6f0 底 28px 圆角、方角按钮）
- *   其它                              => 默认 vant 浅色（白底 16px 圆角、红色实心按钮）
+ * 原站首次访问按设备自动套「视觉主题」(Oe())，改变 body 底色与弹窗外观：
+ *   /iPhone|iPod|Macintosh|MacIntel/i => "ios26"
+ *   /Android/i                        => "md"
+ *
+ *   ios26: html.t_ios26-visual body{background:#efeff4;color:#000;letter-spacing:-.43px}
+ *          .van-dialog 毛玻璃 hsla(0,0%,100%,.88) + blur(16px) + 内嵌阴影 + 28px 圆角
+ *          .van-dialog__footer(van-goods-action) 纯白实底 #fff —— 盖住毛玻璃（下半无玻璃的关键）
+ *          .van-dialog__confirm 透明底 + 红字 #ff3b30 + 药丸 999px
+ *   md:    body{background:var(--md-sys-color-background)=#fef7ff;color:#1d1b20}
+ *          .van-dialog #ece6f0 + 28px 圆角; footer #fff; 按钮 #ece6f0 方角
+ *   default: 白底 16px 圆角; 按钮红橙渐变 linear-gradient(90deg,#ff6034,#ee0a24) 药丸
  *
  * 零依赖、单文件、UMD，可嵌入任意网站。
  * MIT License
@@ -62,6 +70,7 @@
   var OVERLAY_ID = "fw-overlay";
   var DIALOG_ID = "fw-dialog";
   var _savedHtml = null;
+  var _savedBodyStyle = null;
   var _overlay = null;
 
   function detect(ua) {
@@ -75,7 +84,7 @@
     return { ua: ua, matched: matched, tier: tier, blocked: !!tier };
   }
 
-  // 与原站一致的设备主题判断
+  // 与原站 Oe() 一致的设备主题判断
   function resolveTheme(ua) {
     ua = ua || "";
     if (/iPhone|iPod|Macintosh|MacIntel/i.test(ua)) return "ios26";
@@ -93,29 +102,35 @@
     if (document.getElementById(STYLE_ID)) return;
     var z = DEFAULTS.zIndex;
     var css = [
-      // —— 基础（vant .van-dialog / .van-overlay）——
+      // —— 基础（vant .van-overlay / .van-dialog / .van-button / .van-goods-action）——
+      // 原站 reset 把标题字重改为 500（非默认 bold），这里复现（h1 内联样式保持原站逐字一致）
+      "h1{font-weight:500}",
       "#" + OVERLAY_ID + "{position:fixed;top:0;left:0;width:100%;height:100%;z-index:" + z + "}",
       "#" + DIALOG_ID + "{position:fixed;top:45%;left:50%;width:320px;max-width:calc(100vw - 32px);",
-      "overflow:hidden;font-size:16px;-webkit-transform:translate3d(-50%,-50%,0);transform:translate3d(-50%,-50%,0);",
-      "z-index:" + (z + 1) + ";font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',",
-      "'Hiragino Sans GB','Microsoft YaHei',sans-serif}",
-      "#" + DIALOG_ID + " .fw-content{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;min-height:104px}",
+      "overflow:hidden;font-size:16px;background-color:#fff;border-radius:16px;",
+      "-webkit-transform:translate3d(-50%,-50%,0);transform:translate3d(-50%,-50%,0);z-index:" + (z + 1) + ";",
+      "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif}",
+      "#" + DIALOG_ID + " .fw-content--isolated{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;min-height:104px}",
       "#" + DIALOG_ID + " .fw-message{-webkit-flex:1;flex:1;max-height:60vh;padding:26px 24px 16px;",
       "overflow-y:auto;font-size:14px;line-height:20px;white-space:pre-wrap;text-align:center;",
-      "word-wrap:break-word;box-sizing:border-box}",
-      "#" + DIALOG_ID + " .fw-footer{padding:8px 24px 16px}",
-      "#" + DIALOG_ID + " .fw-confirm{display:block;width:100%;height:36px;margin:0;padding:0;border:0;",
-      "font-size:16px;line-height:36px;text-align:center;cursor:pointer;box-sizing:border-box;-webkit-appearance:none;appearance:none}",
-      "#" + DIALOG_ID + " .fw-debug-reset{display:block;margin:0 auto;padding:6px 12px;border:0;background:none;",
+      "word-wrap:break-word;color:#323233;box-sizing:border-box}",
+      // footer = van-goods-action + van-dialog__footer(round-button)：纯白实底，盖住毛玻璃
+      "#" + DIALOG_ID + " .fw-footer{display:-webkit-flex;display:flex;overflow:hidden;position:relative;",
+      "height:auto;padding:8px 24px 16px;background-color:#fff}",
+      "#" + DIALOG_ID + " .fw-confirm{-webkit-flex:1;flex:1;height:36px;margin:0;border:0;",
+      "font-size:16px;line-height:36px;text-align:center;cursor:pointer;box-sizing:border-box;",
+      "-webkit-appearance:none;appearance:none}",
+      "#" + DIALOG_ID + " .fw-debug-reset{display:block;margin:10px auto 0;padding:4px 10px;border:0;background:none;",
       "color:#999;font-size:12px;text-decoration:underline;cursor:pointer}",
 
-      // —— default：vant 浅色（白底 16px 圆角、红色实心按钮、遮罩 rgba(0,0,0,.7)）——
+      // —— default：vant 浅色（白底 16px 圆角、红橙渐变药丸按钮、遮罩 rgba(0,0,0,.7)）——
       "#" + OVERLAY_ID + ".fw-default{background-color:rgba(0,0,0,.7)}",
       "#" + DIALOG_ID + ".fw-default{background-color:#fff;border-radius:16px}",
       "#" + DIALOG_ID + ".fw-default .fw-message{color:#323233}",
-      "#" + DIALOG_ID + ".fw-default .fw-confirm{background-color:#ee0a24;color:#fff;border-radius:2px}",
+      "#" + DIALOG_ID + ".fw-default .fw-footer{background-color:#fff}",
+      "#" + DIALOG_ID + ".fw-default .fw-confirm{background:linear-gradient(90deg,#ff6034,#ee0a24);color:#fff;border-radius:999px}",
 
-      // —— ios26：遮罩透明、毛玻璃白底 28px 圆角 + 内嵌阴影、按钮透明红字药丸 ——
+      // —— ios26：遮罩透明、毛玻璃白底 28px 圆角 + 内嵌阴影、footer 纯白、按钮透明红字药丸 ——
       "#" + OVERLAY_ID + ".fw-ios26{background:transparent}",
       "#" + DIALOG_ID + ".fw-ios26{background:hsla(0,0%,100%,.88);border-radius:28px;",
       "-webkit-backdrop-filter:saturate(180%) blur(16px);backdrop-filter:saturate(180%) blur(16px);",
@@ -124,18 +139,64 @@
       "inset 0 0 5px 1px #fff,inset 0 0 0 0.5px rgba(0,0,0,.251),",
       "inset 0 0 24px 0 rgba(0,0,0,.102),0 0 25px 0 rgba(0,0,0,.2)}",
       "#" + DIALOG_ID + ".fw-ios26 .fw-message{color:#323233}",
+      "#" + DIALOG_ID + ".fw-ios26 .fw-footer{background-color:#fff}",
       "#" + DIALOG_ID + ".fw-ios26 .fw-confirm{background:transparent;color:#ff3b30;border-radius:999px}",
 
-      // —— md：Material 3 浅色（#ece6f0 底 28px 圆角、方角按钮）——
+      // —— md：Material 3 浅色（#ece6f0 底 28px 圆角、footer 白、按钮 #ece6f0 方角）——
       "#" + OVERLAY_ID + ".fw-md{background-color:rgba(0,0,0,.7)}",
-      "#" + DIALOG_ID + ".fw-md{background:#ece6f0;color:#1d1b20;border-radius:28px}",
+      "#" + DIALOG_ID + ".fw-md{background:#ece6f0;border-radius:28px}",
       "#" + DIALOG_ID + ".fw-md .fw-message{color:#1d1b20}",
-      "#" + DIALOG_ID + ".fw-md .fw-confirm{background:#ece6f0;color:#ee0a24;border-radius:0}"
+      "#" + DIALOG_ID + ".fw-md .fw-footer{background-color:#fff}",
+      "#" + DIALOG_ID + ".fw-md .fw-confirm{background:#ece6f0;color:#1d1b20;border-radius:0}"
     ].join("\n");
     var style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = css;
     document.head.appendChild(style);
+  }
+
+  // 复现原站「灰底高亮」的关键：body 内容被替换后高度塌缩到 h1 那一行，
+  // 原站 html 是白底（阻止 body 灰底向画布传播），所以灰底只在 h1 行呈现为整行高亮，
+  // 下方仍为白色。这里用内联样式精确复现：html 白底 + body 灰底 + 黑字。
+  function applyBodyTheme(theme) {
+    if (theme !== "ios26" && theme !== "md") return; // default：不动页面底色
+    var html = document.documentElement;
+    var body = document.body;
+    if (_savedBodyStyle === null) {
+      _savedBodyStyle = {
+        htmlBackground: html.style.background,
+        bodyBackground: body.style.background,
+        bodyColor: body.style.color,
+        bodyLetterSpacing: body.style.letterSpacing,
+        bodyLineHeight: body.style.lineHeight,
+        bodyFontSize: body.style.fontSize
+      };
+    }
+    // 原站 html 是白底（阻止 body 灰底向画布传播），body 灰底只在塌缩后的 h1 行呈现整行高亮
+    html.style.background = "#fff";
+    body.style.fontSize = "12px";        // 原站 flexible 固定 body 12px
+    body.style.lineHeight = "1.15";      // 原站 html{line-height:1.15} 无单位，被 h1 按 32px 继承为 36.8px
+    if (theme === "ios26") {
+      body.style.background = "#efeff4"; // 灰底（仅铺满塌缩后的 h1 行）
+      body.style.color = "#000";         // 黑字
+      body.style.letterSpacing = "-.43px";
+    } else {
+      body.style.background = "#fef7ff";
+      body.style.color = "#1d1b20";
+    }
+  }
+
+  function restoreBodyTheme() {
+    if (_savedBodyStyle === null) return;
+    var html = document.documentElement;
+    var body = document.body;
+    html.style.background = _savedBodyStyle.htmlBackground;
+    body.style.background = _savedBodyStyle.bodyBackground;
+    body.style.color = _savedBodyStyle.bodyColor;
+    body.style.letterSpacing = _savedBodyStyle.bodyLetterSpacing;
+    body.style.lineHeight = _savedBodyStyle.bodyLineHeight;
+    body.style.fontSize = _savedBodyStyle.bodyFontSize;
+    _savedBodyStyle = null;
   }
 
   function show(result, opts) {
@@ -154,16 +215,19 @@
       ? '<h1 style="margin:10px;font-size:32px">' + escapeHtml(cfg.title) + "</h1>"
       : "";
 
+    applyBodyTheme(theme);
+
     var overlay = document.createElement("div");
     overlay.id = OVERLAY_ID;
     overlay.className = "fw-" + theme;
     var dialog = document.createElement("div");
     dialog.id = DIALOG_ID;
-    dialog.className = "fw-" + theme;
+    dialog.className = "fw-" + theme + " fw-round-button";
     dialog.setAttribute("role", "dialog");
     dialog.innerHTML =
-      '<div class="fw-content"><div class="fw-message">' + escapeHtml(cfg.tip) + "</div></div>" +
-      '<div class="fw-footer"><button type="button" class="fw-confirm">' + escapeHtml(cfg.confirmText) + "</button></div>" +
+      '<div class="fw-content--isolated"><div class="fw-message">' + escapeHtml(cfg.tip) + "</div></div>" +
+      '<div class="fw-footer"><button type="button" class="fw-confirm"><span class="fw-btn-text">' +
+      escapeHtml(cfg.confirmText) + "</span></button></div>" +
       (cfg.debug ? '<button type="button" class="fw-debug-reset">重置预览</button>' : "");
 
     overlay.appendChild(dialog);
@@ -187,6 +251,9 @@
 
   function restore() {
     dismiss();
+    restoreBodyTheme();
+    var st = document.getElementById(STYLE_ID);
+    if (st && st.parentNode) st.parentNode.removeChild(st);
     if (_savedHtml !== null) {
       document.body.innerHTML = _savedHtml;
       _savedHtml = null;
@@ -211,7 +278,7 @@
   }
 
   var api = {
-    VERSION: "3.0.0",
+    VERSION: "3.1.0",
     PLATFORMS: PLATFORMS,
     detect: detect,
     resolveTheme: resolveTheme,
