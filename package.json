@@ -1,0 +1,28 @@
+{
+  "name": "fuck-weixin",
+  "version": "1.0.0",
+  "description": "复现 Pixiv Viewer 的「FUCK WECHAT」遮罩：在微信/QQ 等内置浏览器中拦截访客并引导改用 Chrome/Edge/Safari。单文件、零依赖。",
+  "main": "fuck-weixin.js",
+  "unpkg": "fuck-weixin.js",
+  "jsdelivr": "fuck-weixin.js",
+  "files": [
+    "fuck-weixin.js",
+    "index.html",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "weixin",
+    "wechat",
+    "MicroMessenger",
+    "user-agent",
+    "in-app-browser",
+    "overlay",
+    "block",
+    "pixiv"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/sujmao/fuck-weixin#readme"
+}

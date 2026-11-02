@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>fuck-weixin · 微信内置浏览器拦截遮罩 Demo</title>
+<meta name="description" content="复现 Pixiv Viewer 在微信内置浏览器中显示的 FUCK WECHAT 遮罩，可复用、可自定义，附 UA 模拟器。">
+<meta name="referrer" content="no-referrer">
+<style>
+  :root { --bg:#0e1116; --card:#171b23; --text:#e8ecf4; --muted:#8b93a3; --accent:#ff3b5c; --line:rgba(255,255,255,.08); }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  .bar { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:14px 20px; background:rgba(14,17,22,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(8px); }
+  .bar .brand { font-weight:900; letter-spacing:.03em; margin-right:auto; }
+  .bar .brand b { color:var(--accent); }
+  .bar button { padding:8px 14px; font-size:13px; font-weight:600; color:var(--text); background:var(--card); border:1px solid var(--line); border-radius:10px; cursor:pointer; transition:all .12s ease; }
+  .bar button:hover { border-color:var(--accent); color:var(--accent); }
+  .bar button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .wrap { max-width:1000px; margin:0 auto; padding:28px 20px 80px; }
+  h2 { margin:0 0 14px; font-size:20px; }
+  .muted { color:var(--muted); font-size:14px; }
+  .code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:13px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:2px 8px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; margin-top:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+  .card .thumb { aspect-ratio:3/4; display:flex; align-items:center; justify-content:center; font-size:40px; }
+  .card .meta { padding:12px 14px; }
+  .card .meta .t { font-weight:700; font-size:14px; }
+  .card .meta .s { color:var(--muted); font-size:12px; }
+  .steps { margin-top:26px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px 22px; }
+  .steps ol { margin:10px 0 0; padding-left:20px; }
+  .steps li { margin:6px 0; }
+  .notice { margin-top:26px; padding:16px 20px; border:1px dashed var(--accent); border-radius:12px; color:var(--muted); font-size:14px; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f5f6f8; --card:#ffffff; --text:#1a1e26; --muted:#5b6472; --line:rgba(0,0,0,.1); }
+    .bar { background:rgba(245,246,248,.92); }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="brand">fuck<b>-weixin</b> · Demo</div>
+  <button data-ua="none">正常浏览器</button>
+  <button data-ua="wechat">微信</button>
+  <button data-ua="qq">QQ</button>
+  <button data-ua="quark">夸克</button>
+  <button data-ua="uc">UC</button>
+  <button data-ua="baidu">百度</button>
+  <button data-ua="huawei">华为</button>
+  <button data-ua="miui">小米</button>
+  <button id="dismiss" style="display:none">关闭遮罩</button>
+</div>
+
+<div class="wrap">
+  <h2>一个「个性化网站」示例</h2>
+  <p class="muted">下面是一个虚构的作品集。真实效果：当访客从<b>微信 / QQ / 夸克 / UC 等内置浏览器</b>打开本页时，会被全屏遮罩拦截，提示改用 Chrome / Edge / Safari。用顶部按钮可在此页模拟各平台 UA 预览。</p>
+
+  <div class="grid">
+    <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#ff5f6d,#ffc371)">🖼️</div><div class="meta"><div class="t">作品 #55655838</div><div class="s">pixiv.pictures/i/55655838</div></div></div>
+    <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#667eea,#764ba2)">🎨</div><div class="meta"><div class="t">插画 01</div><div class="s">3000 × 2000 px</div></div></div>
+    <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#43e97b,#38f9d7)">📐</div><div class="meta"><div class="t">设计稿 02</div><div class="s">Figma → Web</div></div></div>
+    <div class="card"><div class="thumb" style="background:linear-gradient(135deg,#fa709a,#fee140)">📷</div><div class="meta"><div class="t">摄影 03</div><div class="s">Raw · 2026</div></div></div>
+  </div>
+
+  <div class="steps">
+    <h2>接入你自己的网站</h2>
+    <p class="muted">单文件、零依赖。三种方式任选其一：</p>
+    <ol>
+      <li>直接引入并自动拦截：<span class="code">&lt;script src="fuck-weixin.js" data-auto&gt;&lt;/script&gt;</span></li>
+      <li>手动调用：<span class="code">FuckWeixin.init({ title:"FUCK WECHAT", tip:"请用浏览器打开" })</span></li>
+      <li>只检测不渲染：<span class="code">FuckWeixin.detect() // → { blocked, tier, matched }</span></li>
+    </ol>
+  </div>
+
+  <div class="notice">
+    <b>在真实微信里测试：</b>把部署后的链接（GitHub Pages）发给自己的「文件传输助手」，在微信里点开即可看到遮罩；
+    或复制链接，用微信「扫一扫」识别二维码访问。桌面浏览器默认不会被拦截，可用顶部按钮模拟预览。
+  </div>
+</div>
+
+<script src="fuck-weixin.js"></script>
+<script>
+  // UA 样本（仅演示用，token 命中即触发）
+  var UAS = {
+    wechat: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.40(0x1800282A) NetType/WIFI Language/zh_CN",
+    qq: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 QQ/8.9.68 V1_IPH_SQ_8.9.68 MiniAppEnable Core/UIWebView",
+    quark: "Mozilla/5.0 (Linux; U; Android 13; zh-CN) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.0.0 Quark/6.10.0.123 Mobile Safari/537.36",
+    uc: "Mozilla/5.0 (Linux; U; Android 13; zh-CN) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 UCBrowser/13.4.0.1306 Mobile Safari/537.36",
+    baidu: "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 baiduboxapp/13.0 Mobile Safari/537.36",
+    huawei: "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 HuaweiBrowser/13.0.1.300 Mobile Safari/537.36",
+    miui: "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 MiuiBrowser/16.0.1 Mobile Safari/537.36"
+  };
+
+  var CONFIG = {
+    title: "FUCK WECHAT",
+    tip: "请使用 Chrome / Edge / Safari 浏览器访问本站",
+    hint: "点按下方按钮复制链接，粘贴到浏览器地址栏打开",
+    onBlock: function (r) { console.log("[fuck-weixin] blocked", r.tier, r.matched.map(function(p){return p.name;})); }
+  };
+
+  function simulate(ua) {
+    FuckWeixin.dismiss();
+    if (ua === "none") {
+      document.querySelectorAll(".bar button[data-ua]").forEach(function(b){ b.classList.remove("active"); });
+      document.getElementById("dismiss").style.display = "none";
+      return;
+    }
+    document.querySelectorAll(".bar button[data-ua]").forEach(function(b){ b.classList.remove("active"); });
+    document.querySelector("[data-ua='" + ua + "']").classList.add("active");
+    document.getElementById("dismiss").style.display = "inline-block";
+    FuckWeixin.run(UAS[ua], CONFIG);
+  }
+
+  document.querySelectorAll(".bar button[data-ua]").forEach(function (b) {
+    b.addEventListener("click", function () { simulate(b.getAttribute("data-ua")); });
+  });
+  document.getElementById("dismiss").addEventListener("click", function () {
+    FuckWeixin.dismiss();
+    document.getElementById("dismiss").style.display = "none";
+    document.querySelectorAll(".bar button[data-ua]").forEach(function(b){ b.classList.remove("active"); });
+  });
+</script>
+</body>
+</html>
